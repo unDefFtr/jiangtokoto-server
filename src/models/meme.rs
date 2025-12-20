@@ -11,6 +11,7 @@ pub struct Meme {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct MemeResponse {
     pub id: u32,
     pub mime_type: String,
