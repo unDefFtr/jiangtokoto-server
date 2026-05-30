@@ -86,10 +86,10 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
         .build(&config.logging.directory)  // 使用 build() 方法直接指定目录
         .expect("创建日志文件失败");
 
-    // 初始化日志系统
+    // 初始化日志系统 (环境变量优先于配置文件)
     let log_level = std::env::var("LOG_LEVEL")
-        .unwrap_or_else(|_| "info".to_string());
-    
+        .unwrap_or_else(|_| config.logging.level.clone());
+
     tracing_subscriber::registry()
         .with(tracing_subscriber::EnvFilter::new(log_level))
         .with(tracing_subscriber::fmt::layer()
@@ -97,8 +97,6 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
             .with_ansi(false)
             .with_file(true)
             .with_line_number(true)
-            .with_thread_ids(true)
-            .with_thread_names(true)
             .with_target(false))
         .with(tracing_subscriber::fmt::layer().with_writer(std::io::stdout))
         .init();
@@ -166,8 +164,6 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     let addr: SocketAddr = format!("{}:{}", config.server.host, config.server.port)
         .parse()
         .map_err(|e| AppError::Internal(format!("Invalid address: {}", e)))?;
-    tracing::info!("Server started on {}", addr);
-
     // 启动服务器
     let listener = tokio::net::TcpListener::bind(addr).await?;
     tracing::info!("Server started on {}", addr);

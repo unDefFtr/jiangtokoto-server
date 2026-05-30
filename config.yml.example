@@ -17,6 +17,8 @@ logging:
   directory: "logs"
   # 日志文件前缀
   file_prefix: "jiangtokoto"
+  # 日志级别 (trace, debug, info, warn, error). 可通过 LOG_LEVEL 环境变量覆盖
+  level: "info"
 
 # 存储配置 Storage Configuration
 storage:

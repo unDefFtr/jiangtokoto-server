@@ -51,7 +51,11 @@ impl MemeService {
                 Ok(event) => {
                     // 只输出变更的文件路径
                     for path in event.paths {
-                        info!("File change detected: {}", path.display());
+                        info!(
+                            kind = ?event.kind,
+                            path = %path.display(),
+                            "File change detected"
+                        );
                     }
                     if let Err(e) = reload_tx_clone.send(()) {
                         error!("Failed to send reload signal: {}", e);
@@ -105,6 +109,7 @@ impl MemeService {
     }
 
     async fn reload_memes(&mut self) -> Result<()> {
+        let start = Instant::now();
         let mut memes = HashMap::new();
         let mut count = 0;
 
@@ -169,7 +174,7 @@ impl MemeService {
         // 更新 Prometheus 指标
         TOTAL_MEMES.set(count as f64);
 
-        info!("Reloaded {} memes", count);
+        info!(count = count, elapsed = ?start.elapsed(), "Reloaded memes");
         Ok(())
     }
 
@@ -414,13 +419,11 @@ impl MemeService {
 
         // 缓存压缩后的图片
         self.resized_cache.insert(cache_key.clone(), resized_content.clone()).await;
-        self.cache_misses.fetch_add(1, Ordering::Relaxed);
-        self.update_cache_metrics();
         debug!(
             meme_id = id,
             cache_type = "resized",
             cache_key = cache_key,
-            "Cache miss"
+            "Cached resized image"
         );
         
         Ok((meme, resized_content))

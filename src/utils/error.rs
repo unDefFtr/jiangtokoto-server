@@ -41,7 +41,7 @@ pub enum AppError {
 
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
-        let (status, error_message) = match self {
+        let (status, error_message) = match &self {
             AppError::Io(_) => (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error"),
             AppError::ImageProcessing(_) => (StatusCode::INTERNAL_SERVER_ERROR, "Image processing error"),
             AppError::Cache(_) => (StatusCode::INTERNAL_SERVER_ERROR, "Cache error"),
@@ -53,6 +53,15 @@ impl IntoResponse for AppError {
             AppError::BadRequest(_) => (StatusCode::BAD_REQUEST, "Bad request"),
             AppError::FileSystem(_) => (StatusCode::INTERNAL_SERVER_ERROR, "File system error"),
         };
+
+        // 记录服务端错误详情
+        if status == StatusCode::INTERNAL_SERVER_ERROR {
+            tracing::error!(error = %self, "Internal server error occurred");
+        } else if status == StatusCode::NOT_FOUND {
+            tracing::warn!(error = %self, "Resource not found");
+        } else {
+            tracing::debug!(error = %self, "Client error");
+        }
 
         let body = Json(json!({
             "error": error_message,

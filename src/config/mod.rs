@@ -31,6 +31,12 @@ pub struct CacheConfig {
 pub struct LoggingConfig {
     pub directory: String,
     pub file_prefix: String,
+    #[serde(default = "default_log_level")]
+    pub level: String,
+}
+
+fn default_log_level() -> String {
+    "info".to_string()
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -61,6 +67,7 @@ impl Default for LoggingConfig {
         Self {
             directory: "logs".to_string(),
             file_prefix: "jiangtokoto".to_string(),
+            level: "info".to_string(),
         }
     }
 }
@@ -134,12 +141,12 @@ impl Config {
             let example_path = path.with_extension("yml.example");
 
             if example_path.exists() {
-                tracing::info!("Creating new config from example file");
+                eprintln!("Creating new config from example file");
                 fs::copy(&example_path, path)
                     .map_err(|e| AppError::Internal(format!("复制示例配置文件失败: {}", e)))?;
             } else {
                 // 如果示例配置不存在，创建默认配置
-                tracing::info!("Config file not found, creating default config");
+                eprintln!("Config file not found, creating default config");
                 let config = Config::default();
                 let config_str = serde_yaml::to_string(&config)
                     .map_err(|e| AppError::Internal(format!("序列化默认配置失败: {}", e)))?;
@@ -155,7 +162,7 @@ impl Config {
                 fs::write(path, config_str)
                     .map_err(|e| AppError::Internal(format!("写入默认配置文件失败: {}", e)))?;
 
-                tracing::info!("Default config file created: {:?}", path);
+                eprintln!("Default config file created: {:?}", path);
             }
         }
 
@@ -175,7 +182,7 @@ impl Config {
         if !Path::new(&config.storage.memes_dir).exists() {
             fs::create_dir_all(&config.storage.memes_dir)
                 .map_err(|e| AppError::Internal(format!("Failed to create memes directory: {}", e)))?;
-            tracing::info!("Memes directory created: {}", config.storage.memes_dir);
+            eprintln!("Memes directory created: {}", config.storage.memes_dir);
         }
 
         Ok(Arc::new(config))

@@ -6,7 +6,7 @@ use axum::{
 };
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use tracing::info;
+use tracing::{info, warn, error};
 use serde::Serialize;
 use serde::Deserialize;
 
@@ -111,7 +111,7 @@ pub async fn random_meme(
                         (resized_meme, resized_content)
                     }
                     Err(e) => {
-                        info!("Failed to get compressed image: {}", e);
+                        error!("Failed to get compressed image: {}", e);
                         return (StatusCode::INTERNAL_SERVER_ERROR, HeaderMap::new(), Vec::new());
                     }
                 }
@@ -132,7 +132,7 @@ pub async fn random_meme(
             (StatusCode::OK, resp_headers, content)
         }
         Err(_) => {
-            info!("Failed to get meme");
+            error!("Failed to get meme");
             (StatusCode::INTERNAL_SERVER_ERROR, HeaderMap::new(), Vec::new())
         }
     }
@@ -222,11 +222,11 @@ pub async fn get_meme_by_id(
             (StatusCode::OK, resp_headers, content)
         }
         Err(AppError::NotFound(msg)) => {
-            info!("Failed to get meme: {}", msg);
+            warn!("Meme not found: {}", msg);
             (StatusCode::NOT_FOUND, HeaderMap::new(), Vec::new())
         }
         Err(_) => {
-            info!("Failed to get meme");
+            error!("Failed to get meme");
             (StatusCode::INTERNAL_SERVER_ERROR, HeaderMap::new(), Vec::new())
         }
     }
