@@ -36,3 +36,7 @@ Thumbs.db
 
 # 本地配置文件，使用 config.yml.example 作为模板
 config.yml
+
+# Nix 构建产物
+/result
+/.pre-commit-config.yaml
