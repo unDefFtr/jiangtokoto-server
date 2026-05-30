@@ -51,19 +51,19 @@ impl MemeService {
                 Ok(event) => {
                     // 只输出变更的文件路径
                     for path in event.paths {
-                        info!("检测到文件变更: {}", path.display());
+                        info!("File change detected: {}", path.display());
                     }
                     if let Err(e) = reload_tx_clone.send(()) {
-                        error!("发送重载信号失败: {}", e);
+                        error!("Failed to send reload signal: {}", e);
                     }
                 }
-                Err(e) => error!("监控文件出错: {}", e),
+                Err(e) => error!("File watch error: {}", e),
             }
         })?;
 
         // 开始监控目录
         watcher.watch(&memes_dir, RecursiveMode::Recursive)?;
-        info!("开始监控目录: {:?}", memes_dir);
+        info!("Started watching directory: {:?}", memes_dir);
 
         // 初始化缓存 - 增加缓存容量
         let content_cache = moka::future::Cache::builder()
@@ -169,7 +169,7 @@ impl MemeService {
         // 更新 Prometheus 指标
         TOTAL_MEMES.set(count as f64);
 
-        info!("重新加载了 {} 个表情包", count);
+        info!("Reloaded {} memes", count);
         Ok(())
     }
 
@@ -183,9 +183,9 @@ impl MemeService {
 
                 // 等待重载信号
                 while let Ok(()) = rx.recv().await {
-                    info!("正在重新加载表情包...");
+                    info!("Reloading memes...");
                     if let Err(e) = service.write().await.reload_memes().await {
-                        error!("重新加载表情包失败: {}", e);
+                        error!("Failed to reload memes: {}", e);
                     }
                 }
 

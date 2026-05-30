@@ -111,7 +111,7 @@ pub async fn random_meme(
                         (resized_meme, resized_content)
                     }
                     Err(e) => {
-                        info!("获取压缩图片失败: {}", e);
+                        info!("Failed to get compressed image: {}", e);
                         return (StatusCode::INTERNAL_SERVER_ERROR, HeaderMap::new(), Vec::new());
                     }
                 }
@@ -132,7 +132,7 @@ pub async fn random_meme(
             (StatusCode::OK, resp_headers, content)
         }
         Err(_) => {
-            info!("获取表情包失败");
+            info!("Failed to get meme");
             (StatusCode::INTERNAL_SERVER_ERROR, HeaderMap::new(), Vec::new())
         }
     }
@@ -222,11 +222,11 @@ pub async fn get_meme_by_id(
             (StatusCode::OK, resp_headers, content)
         }
         Err(AppError::NotFound(msg)) => {
-            info!("获取表情包失败: {}", msg);
+            info!("Failed to get meme: {}", msg);
             (StatusCode::NOT_FOUND, HeaderMap::new(), Vec::new())
         }
         Err(_) => {
-            info!("获取表情包失败");
+            info!("Failed to get meme");
             (StatusCode::INTERNAL_SERVER_ERROR, HeaderMap::new(), Vec::new())
         }
     }

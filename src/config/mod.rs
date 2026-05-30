@@ -111,21 +111,35 @@ impl Default for Config {
 }
 
 impl Config {
+    /// 严格加载配置文件，文件不存在时报错
     pub fn load_from_file<P: AsRef<Path>>(path: P) -> Result<Arc<Self>> {
         let path = path.as_ref();
 
-        // 如果配置文件不存在，创建默认配置
+        if !path.exists() {
+            return Err(AppError::Internal(format!(
+                "配置文件不存在: {}",
+                path.display()
+            )));
+        }
+
+        Self::parse_and_validate(path)
+    }
+
+    /// 加载配置文件，文件不存在时自动创建默认配置（仅用于默认路径）
+    pub fn load_or_create_default<P: AsRef<Path>>(path: P) -> Result<Arc<Self>> {
+        let path = path.as_ref();
+
         if !path.exists() {
             // 检查示例配置文件是否存在
             let example_path = path.with_extension("yml.example");
-            
+
             if example_path.exists() {
-                tracing::info!("从示例配置创建新的配置文件");
+                tracing::info!("Creating new config from example file");
                 fs::copy(&example_path, path)
                     .map_err(|e| AppError::Internal(format!("复制示例配置文件失败: {}", e)))?;
             } else {
                 // 如果示例配置不存在，创建默认配置
-                tracing::info!("配置文件不存在，创建默认配置");
+                tracing::info!("Config file not found, creating default config");
                 let config = Config::default();
                 let config_str = serde_yaml::to_string(&config)
                     .map_err(|e| AppError::Internal(format!("序列化默认配置失败: {}", e)))?;
@@ -141,25 +155,27 @@ impl Config {
                 fs::write(path, config_str)
                     .map_err(|e| AppError::Internal(format!("写入默认配置文件失败: {}", e)))?;
 
-                tracing::info!("默认配置文件已创建: {:?}", path);
+                tracing::info!("Default config file created: {:?}", path);
             }
         }
 
-        // 读取现有配置
+        Self::parse_and_validate(path)
+    }
+
+    fn parse_and_validate(path: &Path) -> Result<Arc<Self>> {
         let config_str = fs::read_to_string(path)
             .map_err(|e| AppError::Internal(format!("Failed to read config file: {}", e)))?;
 
         let config: Config = serde_yaml::from_str(&config_str)
             .map_err(|e| AppError::Internal(format!("Failed to parse config file: {}", e)))?;
 
-        // 验证配置
         config.validate()?;
 
         // 确保表情包目录存在
         if !Path::new(&config.storage.memes_dir).exists() {
             fs::create_dir_all(&config.storage.memes_dir)
                 .map_err(|e| AppError::Internal(format!("Failed to create memes directory: {}", e)))?;
-            tracing::info!("表情包目录已创建: {}", config.storage.memes_dir);
+            tracing::info!("Memes directory created: {}", config.storage.memes_dir);
         }
 
         Ok(Arc::new(config))

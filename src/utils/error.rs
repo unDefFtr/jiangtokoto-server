@@ -29,7 +29,7 @@ pub enum AppError {
     #[error("Not found: {0}")]
     NotFound(String),
     
-    #[error("Internal server error: {0}")]
+    #[error("{0}")]
     Internal(String),
     
     #[error("Bad request: {0}")]

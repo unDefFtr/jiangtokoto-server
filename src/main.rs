@@ -3,7 +3,9 @@ use axum::{
     Router,
     extract::ConnectInfo,
 };
+use clap::Parser;
 use std::net::SocketAddr;
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 use tower_http::{
@@ -15,6 +17,16 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use tracing_appender::rolling::{RollingFileAppender, Rotation};
 use crate::utils::error::AppError;
 
+#[derive(Parser)]
+#[command(name = "jiangtokoto-server")]
+#[command(about = "表情包服务器 - Jiangtokoto Meme Server", long_about = None)]
+#[command(version)]
+struct Cli {
+    /// 配置文件路径
+    #[arg(short, long, env = "JIANGTOKOTO_CONFIG")]
+    config: Option<PathBuf>,
+}
+
 #[derive(Clone)]
 struct CustomOnResponse;
 
@@ -24,7 +36,7 @@ impl<B> OnResponse<B> for CustomOnResponse {
         info!(parent: span,
             status = %status,
             latency = ?latency,
-            "响应完成"
+            "Request completed"
         );
     }
 }
@@ -37,17 +49,31 @@ mod utils;
 mod openapi;
 mod metrics;
 
+use std::process;
+
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() {
+    if let Err(e) = run().await {
+        eprintln!("Error: {e}");
+        process::exit(1);
+    }
+}
+
+async fn run() -> Result<(), Box<dyn std::error::Error>> {
+    let cli = Cli::parse();
+
     // 初始化指标
     metrics::init_metrics();
-    
+
     // 记录服务启动时间
     let start_time = std::time::SystemTime::now();
     metrics::set_service_start_time(start_time);
-    
+
     // 加载配置文件
-    let config = config::Config::load_from_file("config.yml")?;
+    let config = match &cli.config {
+        Some(path) => config::Config::load_from_file(path)?,
+        None => config::Config::load_or_create_default("config.yml")?,
+    };
     
     // 确保日志目录存在
     std::fs::create_dir_all(&config.logging.directory)?;
@@ -77,7 +103,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with(tracing_subscriber::fmt::layer().with_writer(std::io::stdout))
         .init();
 
-    tracing::info!("日志系统初始化完成");
+    tracing::info!("Logging system initialized");
     tracing::info!("Configuration loaded successfully");
 
     // 初始化 MemeService
@@ -125,7 +151,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                     tracing::span!(
                         Level::INFO,
-                        "请求",
+                        "request",
                         method = %request.method(),
                         uri = %request.uri(),
                         ip = %remote_addr,
@@ -140,11 +166,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let addr: SocketAddr = format!("{}:{}", config.server.host, config.server.port)
         .parse()
         .map_err(|e| AppError::Internal(format!("Invalid address: {}", e)))?;
-    tracing::info!("服务器启动在 {}", addr);
+    tracing::info!("Server started on {}", addr);
 
     // 启动服务器
     let listener = tokio::net::TcpListener::bind(addr).await?;
-    tracing::info!("服务器启动在 {}", addr);
+    tracing::info!("Server started on {}", addr);
     axum::serve(
         listener,
         app.into_make_service_with_connect_info::<SocketAddr>()
